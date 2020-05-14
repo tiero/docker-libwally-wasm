@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build the container
-docker build -t libwally-wasm https://github.com/tiero/docker-libwally-wasm
+docker build -t libwally-wasm github.com/tiero/docker-libwally-wasm
 # Run the container
 docker run --name linux-build -d -i libwally-wasm
 # Copy the custom build script inside the container
