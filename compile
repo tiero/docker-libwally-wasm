@@ -4,6 +4,7 @@ docker build -t libwally-wasm github.com/tiero/docker-libwally-wasm
 # Run the container
 docker run --name linux-build -d -i libwally-wasm
 # Copy the custom build script inside the container
+docker cp shell_minimal.html linux-build:/app/libwally-core/contrib/shell_minimal.html
 docker cp build_wasm.sh linux-build:/app/libwally-core/tools
 # Run the build script
 docker exec linux-build bash ./tools/build_wasm.sh
