@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Build the container
+docker build -t wally-wasm .
+# Run the container
+docker run --name linux-build -d -i wally-wasm
+
+# Clone and copy the libwally folder inside the container
+git clone https://github.com/ElementsProject/libwally-core.git --branch release_0.8.2 --single-branch
+docker cp ./libwally-core/. linux-build:/build/libwally-core
+# Copy the custom build script inside the container
+docker cp ./scripts/build_wasm linux-build:/build
+
+# Compile to wasm target
+docker exec linux-build bash build_wasm
+
+# Copy the artifacts from the contianer to local directory
+rm -rf dist && mkdir -p dist
+docker cp linux-build:/build/dist/libwally-core.js ./dist
+
+docker stop linux-build
+docker rm linux-build
+#docker rmi wally-wasm

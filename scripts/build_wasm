@@ -1,0 +1,48 @@
+#! /usr/bin/env bash
+
+set -e
+
+## parralelize. Default 4 jobs, check based on current available cores with cpuinfo
+num_jobs=4
+if [ -f /proc/cpuinfo ]; then
+    num_jobs=$(grep ^processor /proc/cpuinfo | wc -l)
+fi
+
+# optmization level
+OPTIMIZATION_LEVEL=s
+# C functions to export to Javascript
+EXTRA_EXPORTED_RUNTIME_METHODS="['getValue', 'setValue', 'ccall', 'UTF8ToString']"
+EXPORTED_FUNCTIONS="['_malloc', '_free', '_wally_init', '_wally_get_secp_context','_wally_elements_pegin_contract_script_from_bytes']"
+
+SOURCE_DIR=libwally-core
+
+cd ${SOURCE_DIR}
+
+#  Initialise the libsecp sources (Needs to be run only once)
+git submodule init
+git submodule sync --recursive
+git submodule update --init --recursive
+
+# cleanup
+./tools/cleanup.sh
+# run autogen
+./tools/autogen.sh
+
+export CFLAGS="-fno-stack-protector"
+
+# Compile secp256k1 to bitcode
+emconfigure ./configure ac_cv_c_bigendian=no --disable-swig-python --disable-swig-java --enable-export-all --enable-elements --disable-ecmult-static-precomputation
+emmake make -j $num_jobs
+
+# Create a folder for artifacts
+mkdir -p dist
+
+# Compile to wasm
+emcc -O$OPTIMIZATION_LEVEL \
+    -s "EXTRA_EXPORTED_RUNTIME_METHODS=${EXTRA_EXPORTED_RUNTIME_METHODS}" \
+    -s "EXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS}" \
+    -s NO_FILESYSTEM=1 \
+    -s MODULARIZE=1 \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    ./src/.libs/*.o src/secp256k1/src/*.o src/ccan/ccan/*/.libs/*.o src/ccan/ccan/*/*/.libs/*.o \
+    -o ./dist/libwally-core.js
